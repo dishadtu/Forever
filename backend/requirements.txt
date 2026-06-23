@@ -1,0 +1,7 @@
+fastapi==0.99.1
+uvicorn[standard]==0.22.0
+sqlmodel==0.0.8
+# pin the binary wheel to a published release to avoid dev prerelease resolution issues
+psycopg-binary==3.2.13
+alembic==1.11.1
+python-dotenv==1.0.0
