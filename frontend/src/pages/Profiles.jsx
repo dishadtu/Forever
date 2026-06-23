@@ -12,7 +12,7 @@ export default function Profiles(){
   },[])
   // if API returns no profiles, show placeholders and ensure demo is centered
   const displayProfiles = profiles.length ? profiles : (()=>{
-    const demo = { id: 'demo', name: 'Demo Profile', description: 'A demo profile' }
+    const demo = { id: 'demo', name: 'US <3', description: 'A demo profile' }
     const placeholders = [
       { id: 'ph1', name: 'Profile A', description: 'Placeholder' },
       { id: 'ph2', name: 'Profile B', description: 'Placeholder' },
