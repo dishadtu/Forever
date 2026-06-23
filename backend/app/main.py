@@ -26,14 +26,29 @@ def on_startup():
     # seed minimal data if empty
     with Session(engine) as session:
         profiles = session.exec(select(Profile)).all()
+        # If no profiles exist, create one named "US <3" and attach the new media if present.
+        media_source = '/media/You+Me.mp4'
         if not profiles:
-            p = Profile(name='Default', description='A sample theme')
+            p = Profile(name='US <3', description='A demo profile with your uploaded video')
             session.add(p)
             session.commit()
             session.refresh(p)
-            v = Video(title='Sample Video', source='/media/sample.mp4', thumbnail=None, profile_id=p.id)
+            v = Video(title='You+Me', source=media_source, thumbnail=None, profile_id=p.id)
             session.add(v)
             session.commit()
+        else:
+            # Rename the first existing profile to "US <3" and ensure it has the video
+            p = profiles[0]
+            if p.name != 'US <3':
+                p.name = 'US <3'
+                session.add(p)
+                session.commit()
+            # Add the media to this profile if not already present
+            exists = session.exec(select(Video).where(Video.profile_id == p.id).where(Video.source == media_source)).first()
+            if not exists:
+                v = Video(title='You+Me', source=media_source, thumbnail=None, profile_id=p.id)
+                session.add(v)
+                session.commit()
 
 
 @app.get('/api/profiles')
