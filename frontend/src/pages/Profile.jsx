@@ -46,23 +46,26 @@ export default function Profile(){
       // Generate backend video URLs for demo videos
       ;(async ()=>{
         try{
+          const BACKEND_URL = 'https://forever23-api.onrender.com'
           const videoUrls = await Promise.all(demoVideos.map(async vv => {
             if(!vv.url) return ''
             if(vv.url.startsWith('http')) return vv.url
-            // For non-http local sources, try presigned URL first, then fallback to direct backend
-            const key = vv.url.split('/').pop()
+            // For non-http local sources, get presigned URL from backend
+            const key = vv.url.split('/').slice(1).join('/') // e.g., "Us/You+Me.mp4"
             try{
-              const res = await axios.get(`/api/presign?key=${encodeURIComponent(key)}`)
+              const res = await axios.get(`${BACKEND_URL}/api/presign?key=${encodeURIComponent(key)}`)
               return res.data.url
             }catch(err){
+              console.error('Failed to get presigned URL for', key, err)
               // Fallback: use backend streaming endpoint
-              return `/api/video/${encodeURIComponent(key)}`
+              return `${BACKEND_URL}/api/video/${encodeURIComponent(key)}`
             }
           }))
           const withPlay = demoVideos.map((vv,i)=> ({ ...vv, playUrl: videoUrls[i] }))
           setVideos(withPlay)
           setSelected(withPlay[0] || null)
         }catch(e){
+          console.error('Failed to generate video URLs:', e)
           // Ultimate fallback: use local URLs
           setVideos(demoVideos)
           setSelected(demoVideos[0] || null)
@@ -77,24 +80,27 @@ export default function Profile(){
       // normalize returned video objects to have a `url` field
       const vids = r.data.map(v => ({ ...v, url: v.source || v.url || '' }))
       setVideos(vids)
-      // generate video URLs: try presigned first, fallback to backend streaming
+      // generate video URLs: get presigned URLs from backend
       try{
+        const BACKEND_URL = 'https://forever23-api.onrender.com'
         const videoUrls = await Promise.all(vids.map(async vv => {
           if(!vv.url) return ''
           if(vv.url.startsWith('http')) return vv.url
-          const key = vv.url.split('/').pop()
+          const key = vv.url.split('/').slice(1).join('/') // Normalize path
           try{
-            const res = await axios.get(`/api/presign?key=${encodeURIComponent(key)}`)
+            const res = await axios.get(`${BACKEND_URL}/api/presign?key=${encodeURIComponent(key)}`)
             return res.data.url
           }catch(err){
+            console.error('Failed to get presigned URL for', key, err)
             // Fallback: use backend streaming endpoint
-            return `/api/video/${encodeURIComponent(key)}`
+            return `${BACKEND_URL}/api/video/${encodeURIComponent(key)}`
           }
         }))
         const withPlay = vids.map((vv,i)=> ({ ...vv, playUrl: videoUrls[i] }))
         setVideos(withPlay)
         setSelected(withPlay[0] || null)
       }catch(e){
+        console.error('Failed to generate video URLs:', e)
         setSelected(vids[0] || null)
       }
     }).catch(()=>setVideos([]))
