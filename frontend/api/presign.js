@@ -12,15 +12,27 @@ module.exports = async (req, res) => {
   try {
     // If region not provided via env, attempt to detect via GetBucketLocation
     if (!region) {
-      const probeClient = new S3Client({ region: 'us-east-1', credentials: {
-        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-      } })
-      const loc = await probeClient.send(new GetBucketLocationCommand({ Bucket: bucket }))
-      const lc = loc.LocationConstraint
-      if (!lc) region = 'us-east-1'
-      else if (lc === 'EU') region = 'eu-west-1'
-      else region = lc
+      try {
+        const probeClient = new S3Client({ region: 'us-east-1', credentials: {
+          accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+          secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+        } })
+        const loc = await probeClient.send(new GetBucketLocationCommand({ Bucket: bucket }))
+        const lc = loc.LocationConstraint
+        if (!lc) region = 'us-east-1'
+        else if (lc === 'EU') region = 'eu-west-1'
+        else region = lc
+      } catch (locErr) {
+        // GetBucketLocation failed, try HEAD request to detect region from redirect
+        try {
+          const headRes = await fetch(`https://${bucket}.s3.amazonaws.com/`, { method: 'HEAD' })
+          const regionHdr = headRes.headers.get('x-amz-bucket-region')
+          if (regionHdr) region = regionHdr
+          else region = 'us-east-1'
+        } catch {
+          region = 'us-east-1' // fallback
+        }
+      }
     }
 
     const client = new S3Client({
