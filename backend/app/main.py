@@ -6,6 +6,8 @@ from .db import init_db, engine
 from .models import Profile, Video
 from sqlmodel import Session
 import os
+import boto3
+from botocore.exceptions import BotoCoreError, ClientError
 
 app = FastAPI(title="Video Netflix Starter API")
 
@@ -18,6 +20,33 @@ app.add_middleware(
 )
 
 app.mount('/media', StaticFiles(directory=os.path.join(os.getcwd(), 'media')), name='media')
+
+
+@app.get('/api/presign')
+def presign_object(key: str):
+    """Return a presigned GET URL for an S3 object. Expects environment variables:
+    S3_BUCKET, AWS_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY (optional if instance role used).
+    """
+    bucket = os.environ.get('S3_BUCKET')
+    region = os.environ.get('AWS_REGION') or os.environ.get('AWS_DEFAULT_REGION')
+    if not bucket:
+        raise HTTPException(status_code=500, detail='S3_BUCKET not configured')
+
+    try:
+        s3 = boto3.client(
+            's3',
+            region_name=region,
+            aws_access_key_id=os.environ.get('AWS_ACCESS_KEY_ID'),
+            aws_secret_access_key=os.environ.get('AWS_SECRET_ACCESS_KEY'),
+        )
+        url = s3.generate_presigned_url(
+            'get_object',
+            Params={'Bucket': bucket, 'Key': key},
+            ExpiresIn=3600,
+        )
+        return {'url': url}
+    except (BotoCoreError, ClientError) as e:
+        raise HTTPException(status_code=500, detail=f'error generating presigned url: {e}')
 
 
 @app.on_event('startup')
