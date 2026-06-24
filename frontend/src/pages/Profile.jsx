@@ -2,6 +2,7 @@ import React, {useEffect, useState} from 'react'
 import { useParams } from 'react-router-dom'
 import axios from 'axios'
 import VideoPlayer from '../components/VideoPlayer'
+import youtubePlaceholders from '../data/youtube_placeholders.json'
 
 function VideoCard({video, onSelect}){
   return (
@@ -43,19 +44,22 @@ export default function Profile(){
       ]
       setProfile(demoProfile)
 
-      // Generate backend video URLs for demo videos
+      // Generate backend video URLs for demo videos (respect YouTube placeholders)
       ;(async ()=>{
         try{
           const BACKEND_URL = 'https://forever23-api.onrender.com'
           const videoUrls = demoVideos.map(vv => {
             if(!vv.url) return ''
+            // Check placeholders by id or by path key
+            const key = vv.url.split('/').slice(1).join('/') // e.g., "Us/You+Me.mp4"
+            const youtubeId = (youtubePlaceholders?.byId && youtubePlaceholders.byId[vv.id]) || (youtubePlaceholders?.byKey && youtubePlaceholders.byKey[key]) || null
+            if(youtubeId) return `youtube:${youtubeId}`
             if(vv.url.startsWith('http')) return vv.url
             // For non-http local sources, use backend streaming endpoint directly
             // This avoids presigned URL CORS issues
-            const key = vv.url.split('/').slice(1).join('/') // e.g., "Us/You+Me.mp4"
             return `${BACKEND_URL}/api/video/${encodeURIComponent(key)}`
           })
-          const withPlay = demoVideos.map((vv,i)=> ({ ...vv, playUrl: videoUrls[i] }))
+          const withPlay = demoVideos.map((vv,i)=> ({ ...vv, playUrl: videoUrls[i], youtubeId: videoUrls[i]?.startsWith('youtube:') ? videoUrls[i].split(':')[1] : undefined }))
           setVideos(withPlay)
           setSelected(withPlay[0] || null)
         }catch(e){
@@ -79,11 +83,22 @@ export default function Profile(){
         const BACKEND_URL = 'https://forever23-api.onrender.com'
         const videoUrls = vids.map(vv => {
           if(!vv.url) return ''
-          if(vv.url.startsWith('http')) return vv.url
+          // If the source is already an http(s) YouTube link, keep it; otherwise check placeholders
+          // detect common youtube links
+          const isYoutubeLink = /youtube\.com|youtu\.be/.test(vv.url)
+          if(isYoutubeLink){
+            // try to extract id
+            const m = vv.url.match(/(?:v=|youtu\.be\/|embed\/)([A-Za-z0-9_-]{5,})/)
+            if(m && m[1]) return `youtube:${m[1]}`
+            return vv.url
+          }
           const key = vv.url.split('/').slice(1).join('/') // Normalize path
+          const youtubeId = (youtubePlaceholders?.byId && youtubePlaceholders.byId[vv.id]) || (youtubePlaceholders?.byKey && youtubePlaceholders.byKey[key]) || null
+          if(youtubeId) return `youtube:${youtubeId}`
+          if(vv.url.startsWith('http')) return vv.url
           return `${BACKEND_URL}/api/video/${encodeURIComponent(key)}`
         })
-        const withPlay = vids.map((vv,i)=> ({ ...vv, playUrl: videoUrls[i] }))
+        const withPlay = vids.map((vv,i)=> ({ ...vv, playUrl: videoUrls[i], youtubeId: videoUrls[i]?.startsWith('youtube:') ? videoUrls[i].split(':')[1] : undefined }))
         setVideos(withPlay)
         setSelected(withPlay[0] || null)
       }catch(e){
@@ -131,7 +146,20 @@ export default function Profile(){
               {isPreviewEnabled ? (
                 <div className="bg-gray-800 rounded overflow-hidden shadow-lg group">
                   <div className="relative">
-                    <VideoPlayer src={v.playUrl || v.url} poster={v.poster} className="w-full h-40 object-cover" previewOnHover onClick={()=>setFullVideo(v)} />
+                    {v.youtubeId ? (
+                      <div className="w-full h-40 bg-black">
+                        <iframe
+                          title={v.title}
+                          src={`https://www.youtube.com/embed/${v.youtubeId}?rel=0&modestbranding=1`}
+                          className="w-full h-40"
+                          frameBorder="0"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                          allowFullScreen
+                        />
+                      </div>
+                    ) : (
+                      <VideoPlayer src={v.playUrl || v.url} poster={v.poster} className="w-full h-40 object-cover" previewOnHover onClick={()=>setFullVideo(v)} />
+                    )}
                   </div>
                   <div className="p-3">
                     <div className="font-semibold truncate">{v.title}</div>
@@ -151,7 +179,20 @@ export default function Profile(){
               <div className="p-2 flex justify-end">
                 <button onClick={()=>setFullVideo(null)} className="text-white bg-black bg-opacity-30 px-3 py-1 rounded">Close</button>
               </div>
-              <VideoPlayer src={fullVideo.playUrl || fullVideo.url} poster={fullVideo.poster} autoPlay={true} className="w-full" />
+              {fullVideo.youtubeId ? (
+                <div className="w-full h-[56vw] max-h-[60vh] bg-black">
+                  <iframe
+                    title={fullVideo.title}
+                    src={`https://www.youtube.com/embed/${fullVideo.youtubeId}?rel=0&modestbranding=1&autoplay=1`}
+                    className="w-full h-full"
+                    frameBorder="0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                </div>
+              ) : (
+                <VideoPlayer src={fullVideo.playUrl || fullVideo.url} poster={fullVideo.poster} autoPlay={true} className="w-full" />
+              )}
               <div className="p-4">
                 <h3 className="text-xl font-bold">{fullVideo.title}</h3>
                 <p className="text-sm text-gray-400">{fullVideo.description}</p>
