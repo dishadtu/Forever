@@ -8,8 +8,9 @@ module.exports = async (req, res) => {
   const bucket = process.env.S3_BUCKET
   if (!bucket) return res.status(500).json({ error: 'S3_BUCKET not set' })
 
-  // Use explicit region env var, or default to eu-north-1
-  const region = process.env.S3_BUCKET_REGION || process.env.AWS_REGION || process.env.AWS_DEFAULT_REGION || 'eu-north-1'
+  // Use explicit S3 region, or default to eu-north-1
+  // Note: S3_BUCKET_REGION takes priority; AWS_REGION/AWS_DEFAULT_REGION may be set to us-east-1 globally
+  const region = process.env.S3_BUCKET_REGION || 'eu-north-1'
 
   try {
     const client = new S3Client({
