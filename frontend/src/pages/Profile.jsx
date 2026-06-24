@@ -127,13 +127,13 @@ export default function Profile(){
   if(!profile) return (
     <div className="content-with-side p-8">
       <div className="max-w-4xl mx-auto">
-        <div className="text-center text-gray-300 py-20">Loading profile...</div>
+        <div className="text-center text-gray-700 py-20">Loading profile...</div>
       </div>
     </div>
   )
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white">
+    <div className="min-h-screen bg-white text-gray-900">
       <div className="content-with-side p-8">
         <h1 className="text-3xl font-bold">{profile.name}</h1>
         <p className="text-sm text-gray-400">{profile.bio}</p>
@@ -144,7 +144,7 @@ export default function Profile(){
           {videos.map(v=> (
             <div key={v.id}>
               {isPreviewEnabled ? (
-                <div className="bg-gray-800 rounded overflow-hidden shadow-lg group">
+                <div className="bg-white rounded overflow-hidden shadow group border">
                   <div className="relative">
                     {v.youtubeId ? (
                       <div className="w-full h-40 bg-black">
@@ -173,11 +173,11 @@ export default function Profile(){
         </div>
       </div>
       {fullVideo && (
-        <div onClick={()=>setFullVideo(null)} className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-80">
+        <div onClick={()=>setFullVideo(null)} className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
           <div className="w-full max-w-4xl mx-4" onClick={(e)=>e.stopPropagation()}>
-            <div className="bg-gray-900 rounded overflow-hidden">
+            <div className="bg-white rounded overflow-hidden">
               <div className="p-2 flex justify-end">
-                <button onClick={()=>setFullVideo(null)} className="text-white bg-black bg-opacity-30 px-3 py-1 rounded">Close</button>
+                <button onClick={()=>setFullVideo(null)} className="text-gray-900 bg-gray-200 px-3 py-1 rounded">Close</button>
               </div>
               {fullVideo.youtubeId ? (
                 <div className="w-full h-[56vw] max-h-[60vh] bg-black">
@@ -195,7 +195,7 @@ export default function Profile(){
               )}
               <div className="p-4">
                 <h3 className="text-xl font-bold">{fullVideo.title}</h3>
-                <p className="text-sm text-gray-400">{fullVideo.description}</p>
+                <p className="text-sm text-gray-600">{fullVideo.description}</p>
               </div>
             </div>
           </div>
