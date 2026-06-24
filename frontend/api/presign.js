@@ -27,9 +27,14 @@ module.exports = async (req, res) => {
       },
     })
 
+    // add STS client to fetch caller identity for debugging
+    const { STSClient, GetCallerIdentityCommand } = require('@aws-sdk/client-sts')
+    const sts = new STSClient({ region, credentials: { accessKeyId, secretAccessKey } })
+    const who = await sts.send(new GetCallerIdentityCommand({}))
+
     const cmd = new GetObjectCommand({ Bucket: bucket, Key: key })
     const url = await getSignedUrl(client, cmd, { expiresIn: 3600 })
-    return res.json({ url, region, bucket, key })
+    return res.json({ url, region, bucket, key, caller: who })
   } catch (err) {
     console.error('Presign error:', {
       bucket,
