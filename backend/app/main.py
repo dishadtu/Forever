@@ -25,10 +25,12 @@ app.mount('/media', StaticFiles(directory=os.path.join(os.getcwd(), 'media')), n
 @app.get('/api/presign')
 def presign_object(key: str):
     """Return a presigned GET URL for an S3 object. Expects environment variables:
-    S3_BUCKET, AWS_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY (optional if instance role used).
+    S3_BUCKET, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY.
+    Region: uses S3_BUCKET_REGION env var, falls back to eu-north-1 (where forever-media-disha bucket is located).
     """
     bucket = os.environ.get('S3_BUCKET')
-    region = os.environ.get('AWS_REGION') or os.environ.get('AWS_DEFAULT_REGION')
+    # Use S3_BUCKET_REGION if set, otherwise default to eu-north-1
+    region = os.environ.get('S3_BUCKET_REGION') or 'eu-north-1'
     if not bucket:
         raise HTTPException(status_code=500, detail='S3_BUCKET not configured')
 
@@ -44,7 +46,7 @@ def presign_object(key: str):
             Params={'Bucket': bucket, 'Key': key},
             ExpiresIn=3600,
         )
-        return {'url': url}
+        return {'url': url, 'region': region}
     except (BotoCoreError, ClientError) as e:
         raise HTTPException(status_code=500, detail=f'error generating presigned url: {e}')
 
