@@ -1,5 +1,7 @@
 const { S3Client, GetObjectCommand } = require('@aws-sdk/client-s3')
 const { getSignedUrl } = require('@aws-sdk/s3-request-presigner')
+const crypto = require('crypto')
+const querystring = require('querystring')
 
 module.exports = async (req, res) => {
   const key = req.query.key || (req.body && req.body.key)
@@ -15,10 +17,10 @@ module.exports = async (req, res) => {
   }
 
   // Use explicit S3 region, or default to eu-north-1
-  // Note: S3_BUCKET_REGION takes priority; AWS_REGION/AWS_DEFAULT_REGION may be set to us-east-1 globally
   const region = process.env.S3_BUCKET_REGION || 'eu-north-1'
 
   try {
+    // Try SDK presign first, but strip problematic query params
     const client = new S3Client({
       region,
       credentials: {
@@ -27,13 +29,19 @@ module.exports = async (req, res) => {
       },
     })
 
+    const cmd = new GetObjectCommand({ Bucket: bucket, Key: key })
+    let url = await getSignedUrl(client, cmd, { expiresIn: 3600 })
+    
+    // Remove problematic query parameters added by AWS SDK v3
+    // (x-amz-checksum-mode, x-id) that break signature validation
+    url = url.replace(/&x-amz-checksum-mode=[^&]*/g, '')
+              .replace(/&x-id=[^&]*/g, '')
+    
     // add STS client to fetch caller identity for debugging
     const { STSClient, GetCallerIdentityCommand } = require('@aws-sdk/client-sts')
     const sts = new STSClient({ region, credentials: { accessKeyId, secretAccessKey } })
     const who = await sts.send(new GetCallerIdentityCommand({}))
 
-    const cmd = new GetObjectCommand({ Bucket: bucket, Key: key })
-    const url = await getSignedUrl(client, cmd, { expiresIn: 3600 })
     return res.json({ url, region, bucket, key, caller: who })
   } catch (err) {
     console.error('Presign error:', {
