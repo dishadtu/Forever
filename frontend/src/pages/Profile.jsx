@@ -48,9 +48,29 @@ export default function Profile(){
     }
 
     axios.get(`/api/profiles/${id}`).then(r=>setProfile(r.data)).catch(()=>null)
-    axios.get(`/api/profiles/${id}/videos`).then(r=>{
-      setVideos(r.data)
-      setSelected(r.data[0] || null)
+    axios.get(`/api/profiles/${id}/videos`).then(async r=>{
+      // normalize returned video objects to have a `url` field
+      const vids = r.data.map(v => ({ ...v, url: v.source || v.url || '' }))
+      setVideos(vids)
+      // generate presigned URLs for non-http sources
+      try{
+        const presigned = await Promise.all(vids.map(async vv => {
+          if(!vv.url) return ''
+          if(vv.url.startsWith('http')) return vv.url
+          const key = vv.url.split('/').pop()
+          try{
+            const res = await axios.get(`/api/presign?key=${encodeURIComponent(key)}`)
+            return res.data.url
+          }catch(err){
+            return vv.url
+          }
+        }))
+        const withPlay = vids.map((vv,i)=> ({ ...vv, playUrl: presigned[i] }))
+        setVideos(withPlay)
+        setSelected(withPlay[0] || null)
+      }catch(e){
+        setSelected(vids[0] || null)
+      }
     }).catch(()=>setVideos([]))
   },[id])
 
@@ -92,7 +112,7 @@ export default function Profile(){
               {isPreviewEnabled ? (
                 <div className="bg-gray-800 rounded overflow-hidden shadow-lg group">
                   <div className="relative">
-                    <VideoPlayer src={v.url} poster={v.poster} className="w-full h-40 object-cover" previewOnHover onClick={()=>setFullVideo(v)} />
+                    <VideoPlayer src={v.playUrl || v.url} poster={v.poster} className="w-full h-40 object-cover" previewOnHover onClick={()=>setFullVideo(v)} />
                   </div>
                   <div className="p-3">
                     <div className="font-semibold truncate">{v.title}</div>
@@ -112,7 +132,7 @@ export default function Profile(){
               <div className="p-2 flex justify-end">
                 <button onClick={()=>setFullVideo(null)} className="text-white bg-black bg-opacity-30 px-3 py-1 rounded">Close</button>
               </div>
-              <VideoPlayer src={fullVideo.url} poster={fullVideo.poster} autoPlay={true} className="w-full" />
+              <VideoPlayer src={fullVideo.playUrl || fullVideo.url} poster={fullVideo.poster} autoPlay={true} className="w-full" />
               <div className="p-4">
                 <h3 className="text-xl font-bold">{fullVideo.title}</h3>
                 <p className="text-sm text-gray-400">{fullVideo.description}</p>
