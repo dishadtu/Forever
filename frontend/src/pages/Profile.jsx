@@ -42,8 +42,30 @@ export default function Profile(){
         { id: 'v3', title: 'Sample HLS', url: '/media/sample.m3u8', poster: '/media/thumb3.jpg', thumbnail: '/media/thumb3.jpg', duration: '0:45', description: 'HLS sample.' }
       ]
       setProfile(demoProfile)
-      setVideos(demoVideos)
-      setSelected(demoVideos[0] || null)
+
+      // Generate presigned URLs for demo videos when the demo profile is shown
+      ;(async ()=>{
+        try{
+          const presigned = await Promise.all(demoVideos.map(async vv => {
+            if(!vv.url) return ''
+            if(vv.url.startsWith('http')) return vv.url
+            const key = vv.url.split('/').pop()
+            try{
+              const res = await axios.get(`/api/presign?key=${encodeURIComponent(key)}`)
+              return res.data.url
+            }catch(err){
+              return vv.url
+            }
+          }))
+          const withPlay = demoVideos.map((vv,i)=> ({ ...vv, playUrl: presigned[i] }))
+          setVideos(withPlay)
+          setSelected(withPlay[0] || null)
+        }catch(e){
+          setVideos(demoVideos)
+          setSelected(demoVideos[0] || null)
+        }
+      })()
+
       return
     }
 
