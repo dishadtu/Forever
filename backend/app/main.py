@@ -29,11 +29,14 @@ def get_s3_client():
     global _s3_client
     if not _s3_client:
         region = os.environ.get('S3_BUCKET_REGION') or 'eu-north-1'
+        # Configure boto3 to use region-specific endpoint for signature matching
+        # This is required for presigned URLs in non-us-east-1 regions
         _s3_client = boto3.client(
             's3',
             region_name=region,
             aws_access_key_id=os.environ.get('AWS_ACCESS_KEY_ID'),
             aws_secret_access_key=os.environ.get('AWS_SECRET_ACCESS_KEY'),
+            endpoint_url=f'https://s3.{region}.amazonaws.com' if region != 'us-east-1' else None,
         )
     return _s3_client
 
