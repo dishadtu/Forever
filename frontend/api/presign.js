@@ -1,45 +1,17 @@
-const { S3Client, GetObjectCommand, GetBucketLocationCommand } = require('@aws-sdk/client-s3')
+const { S3Client, GetObjectCommand } = require('@aws-sdk/client-s3')
 const { getSignedUrl } = require('@aws-sdk/s3-request-presigner')
 
 module.exports = async (req, res) => {
   const key = req.query.key || (req.body && req.body.key)
   if (!key) return res.status(400).json({ error: 'missing key' })
 
-  let region = process.env.S3_BUCKET_REGION || process.env.AWS_REGION || process.env.AWS_DEFAULT_REGION
   const bucket = process.env.S3_BUCKET
   if (!bucket) return res.status(500).json({ error: 'S3_BUCKET not set' })
 
-  try {
-    // If region not provided via env, attempt to detect via GetBucketLocation
-    if (!region) {
-      try {
-        const probeClient = new S3Client({ region: 'us-east-1', credentials: {
-          accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-          secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-        } })
-        const loc = await probeClient.send(new GetBucketLocationCommand({ Bucket: bucket }))
-        const lc = loc.LocationConstraint
-        if (!lc) region = 'us-east-1'
-        else if (lc === 'EU') region = 'eu-west-1'
-        else region = lc
-      } catch (locErr) {
-        // GetBucketLocation failed, try eu-north-1 as common alt region
-        try {
-          const altClient = new S3Client({ region: 'eu-north-1', credentials: {
-            accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-            secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-          } })
-          const loc = await altClient.send(new GetBucketLocationCommand({ Bucket: bucket }))
-          const lc = loc.LocationConstraint
-          if (!lc) region = 'us-east-1'
-          else if (lc === 'EU') region = 'eu-west-1'
-          else region = lc
-        } catch {
-          region = 'eu-north-1' // fallback to common alt region
-        }
-      }
-    }
+  // Use explicit region env var, or default to eu-north-1
+  const region = process.env.S3_BUCKET_REGION || process.env.AWS_REGION || process.env.AWS_DEFAULT_REGION || 'eu-north-1'
 
+  try {
     const client = new S3Client({
       region,
       credentials: {
