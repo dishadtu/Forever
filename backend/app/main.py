@@ -1,13 +1,15 @@
+import os
+import boto3
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from sqlmodel import select
 from .db import init_db, engine
 from .models import Profile, Video
 from sqlmodel import Session
-import os
-import boto3
 from botocore.exceptions import BotoCoreError, ClientError
+from io import BytesIO
 
 app = FastAPI(title="Video Netflix Starter API")
 
@@ -21,26 +23,31 @@ app.add_middleware(
 
 app.mount('/media', StaticFiles(directory=os.path.join(os.getcwd(), 'media')), name='media')
 
-
-@app.get('/api/presign')
-def presign_object(key: str):
-    """Return a presigned GET URL for an S3 object. Expects environment variables:
-    S3_BUCKET, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY.
-    Region: uses S3_BUCKET_REGION env var, falls back to eu-north-1 (where forever-media-disha bucket is located).
-    """
-    bucket = os.environ.get('S3_BUCKET')
-    # Use S3_BUCKET_REGION if set, otherwise default to eu-north-1
-    region = os.environ.get('S3_BUCKET_REGION') or 'eu-north-1'
-    if not bucket:
-        raise HTTPException(status_code=500, detail='S3_BUCKET not configured')
-
-    try:
-        s3 = boto3.client(
+# Initialize S3 client once
+_s3_client = None
+def get_s3_client():
+    global _s3_client
+    if not _s3_client:
+        region = os.environ.get('S3_BUCKET_REGION') or 'eu-north-1'
+        _s3_client = boto3.client(
             's3',
             region_name=region,
             aws_access_key_id=os.environ.get('AWS_ACCESS_KEY_ID'),
             aws_secret_access_key=os.environ.get('AWS_SECRET_ACCESS_KEY'),
         )
+    return _s3_client
+
+
+@app.get('/api/presign')
+def presign_object(key: str):
+    """Return a presigned GET URL for an S3 object."""
+    bucket = os.environ.get('S3_BUCKET')
+    region = os.environ.get('S3_BUCKET_REGION') or 'eu-north-1'
+    if not bucket:
+        raise HTTPException(status_code=500, detail='S3_BUCKET not configured')
+
+    try:
+        s3 = get_s3_client()
         url = s3.generate_presigned_url(
             'get_object',
             Params={'Bucket': bucket, 'Key': key},
@@ -49,6 +56,41 @@ def presign_object(key: str):
         return {'url': url, 'region': region}
     except (BotoCoreError, ClientError) as e:
         raise HTTPException(status_code=500, detail=f'error generating presigned url: {e}')
+
+
+@app.get('/api/video/{key:path}')
+def stream_video(key: str):
+    """Stream video from S3 bucket with CORS headers."""
+    bucket = os.environ.get('S3_BUCKET')
+    if not bucket:
+        raise HTTPException(status_code=500, detail='S3_BUCKET not configured')
+    
+    try:
+        s3 = get_s3_client()
+        # Head request to check if object exists and get its size
+        head = s3.head_object(Bucket=bucket, Key=key)
+        size = head['ContentLength']
+        content_type = head.get('ContentType', 'video/mp4')
+        
+        # Get the object
+        response = s3.get_object(Bucket=bucket, Key=key)
+        
+        # Stream the video with proper headers
+        return StreamingResponse(
+            response['Body'].iter_chunks(chunk_size=1024*1024),
+            media_type=content_type,
+            headers={
+                'Content-Length': str(size),
+                'Accept-Ranges': 'bytes',
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
+                'Access-Control-Allow-Headers': '*',
+            }
+        )
+    except s3.exceptions.NoSuchKey:
+        raise HTTPException(status_code=404, detail=f'video not found: {key}')
+    except (BotoCoreError, ClientError) as e:
+        raise HTTPException(status_code=500, detail=f'error streaming video: {e}')
 
 
 @app.on_event('startup')

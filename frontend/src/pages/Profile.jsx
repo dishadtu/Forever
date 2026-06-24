@@ -43,24 +43,27 @@ export default function Profile(){
       ]
       setProfile(demoProfile)
 
-      // Generate presigned URLs for demo videos when the demo profile is shown
+      // Generate backend video URLs for demo videos
       ;(async ()=>{
         try{
-          const presigned = await Promise.all(demoVideos.map(async vv => {
+          const videoUrls = await Promise.all(demoVideos.map(async vv => {
             if(!vv.url) return ''
             if(vv.url.startsWith('http')) return vv.url
+            // For non-http local sources, try presigned URL first, then fallback to direct backend
             const key = vv.url.split('/').pop()
             try{
               const res = await axios.get(`/api/presign?key=${encodeURIComponent(key)}`)
               return res.data.url
             }catch(err){
-              return vv.url
+              // Fallback: use backend streaming endpoint
+              return `/api/video/${encodeURIComponent(key)}`
             }
           }))
-          const withPlay = demoVideos.map((vv,i)=> ({ ...vv, playUrl: presigned[i] }))
+          const withPlay = demoVideos.map((vv,i)=> ({ ...vv, playUrl: videoUrls[i] }))
           setVideos(withPlay)
           setSelected(withPlay[0] || null)
         }catch(e){
+          // Ultimate fallback: use local URLs
           setVideos(demoVideos)
           setSelected(demoVideos[0] || null)
         }
@@ -74,9 +77,9 @@ export default function Profile(){
       // normalize returned video objects to have a `url` field
       const vids = r.data.map(v => ({ ...v, url: v.source || v.url || '' }))
       setVideos(vids)
-      // generate presigned URLs for non-http sources
+      // generate video URLs: try presigned first, fallback to backend streaming
       try{
-        const presigned = await Promise.all(vids.map(async vv => {
+        const videoUrls = await Promise.all(vids.map(async vv => {
           if(!vv.url) return ''
           if(vv.url.startsWith('http')) return vv.url
           const key = vv.url.split('/').pop()
@@ -84,10 +87,11 @@ export default function Profile(){
             const res = await axios.get(`/api/presign?key=${encodeURIComponent(key)}`)
             return res.data.url
           }catch(err){
-            return vv.url
+            // Fallback: use backend streaming endpoint
+            return `/api/video/${encodeURIComponent(key)}`
           }
         }))
-        const withPlay = vids.map((vv,i)=> ({ ...vv, playUrl: presigned[i] }))
+        const withPlay = vids.map((vv,i)=> ({ ...vv, playUrl: videoUrls[i] }))
         setVideos(withPlay)
         setSelected(withPlay[0] || null)
       }catch(e){
