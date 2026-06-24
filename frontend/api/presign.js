@@ -23,14 +23,19 @@ module.exports = async (req, res) => {
         else if (lc === 'EU') region = 'eu-west-1'
         else region = lc
       } catch (locErr) {
-        // GetBucketLocation failed, try HEAD request to detect region from redirect
+        // GetBucketLocation failed, try eu-north-1 as common alt region
         try {
-          const headRes = await fetch(`https://${bucket}.s3.amazonaws.com/`, { method: 'HEAD' })
-          const regionHdr = headRes.headers.get('x-amz-bucket-region')
-          if (regionHdr) region = regionHdr
-          else region = 'us-east-1'
+          const altClient = new S3Client({ region: 'eu-north-1', credentials: {
+            accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+            secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+          } })
+          const loc = await altClient.send(new GetBucketLocationCommand({ Bucket: bucket }))
+          const lc = loc.LocationConstraint
+          if (!lc) region = 'us-east-1'
+          else if (lc === 'EU') region = 'eu-west-1'
+          else region = lc
         } catch {
-          region = 'us-east-1' // fallback
+          region = 'eu-north-1' // fallback to common alt region
         }
       }
     }
