@@ -1,9 +1,10 @@
 import os
+import re
 import boto3
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, Response
 from sqlmodel import select
 from .db import init_db, engine
 from .models import Profile, Video
@@ -31,12 +32,18 @@ def get_s3_client():
         region = os.environ.get('S3_BUCKET_REGION') or 'eu-north-1'
         # Configure boto3 to use region-specific endpoint for signature matching
         # This is required for presigned URLs in non-us-east-1 regions
+        config = boto3.session.Config(
+            connect_timeout=30,
+            read_timeout=120,  # 2 minutes for large file reads
+            retries={'max_attempts': 2}
+        )
         _s3_client = boto3.client(
             's3',
             region_name=region,
             aws_access_key_id=os.environ.get('AWS_ACCESS_KEY_ID'),
             aws_secret_access_key=os.environ.get('AWS_SECRET_ACCESS_KEY'),
             endpoint_url=f'https://s3.{region}.amazonaws.com' if region != 'us-east-1' else None,
+            config=config,
         )
     return _s3_client
 
@@ -61,9 +68,45 @@ def presign_object(key: str):
         raise HTTPException(status_code=500, detail=f'error generating presigned url: {e}')
 
 
+@app.options('/api/video/{key:path}')
+def video_options(key: str):
+    """Handle CORS preflight requests."""
+    return {'ok': True}
+
+
+@app.head('/api/video/{key:path}')
+def stream_video_head(key: str):
+    """Handle HEAD requests for video metadata."""
+    bucket = os.environ.get('S3_BUCKET')
+    if not bucket:
+        raise HTTPException(status_code=500, detail='S3_BUCKET not configured')
+    
+    try:
+        s3 = get_s3_client()
+        # Head request to check if object exists and get its size
+        head = s3.head_object(Bucket=bucket, Key=key)
+        size = head['ContentLength']
+        
+        return Response(
+            status_code=200,
+            headers={
+                'Accept-Ranges': 'bytes',
+                'Content-Length': str(size),
+                'Content-Type': 'video/mp4',
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
+                'Access-Control-Allow-Headers': '*',
+            }
+        )
+    except s3.exceptions.NoSuchKey:
+        raise HTTPException(status_code=404, detail=f'video not found: {key}')
+    except (BotoCoreError, ClientError) as e:
+        raise HTTPException(status_code=500, detail=f'error: {e}')
+
+
 @app.get('/api/video/{key:path}')
-def stream_video(key: str):
-    """Stream video from S3 bucket with CORS headers."""
+def stream_video(key: str, request: Request):
+    """Stream video from S3 bucket with CORS headers and Range request support."""
     bucket = os.environ.get('S3_BUCKET')
     if not bucket:
         raise HTTPException(status_code=500, detail='S3_BUCKET not configured')
@@ -75,20 +118,49 @@ def stream_video(key: str):
         size = head['ContentLength']
         content_type = head.get('ContentType', 'video/mp4')
         
-        # Get the object
-        response = s3.get_object(Bucket=bucket, Key=key)
+        # Handle Range requests
+        range_header = request.headers.get('Range')
+        status_code = 200
+        headers = {
+            'Accept-Ranges': 'bytes',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
+            'Access-Control-Allow-Headers': '*',
+        }
+        
+        if range_header:
+            # Parse Range header: "bytes=0-1023" or "bytes=0-" etc
+            range_match = re.match(r'bytes=(\d+)-(\d*)', range_header)
+            if range_match:
+                start = int(range_match.group(1))
+                end = range_match.group(2)
+                end = int(end) if end else size - 1
+                
+                # Ensure valid range
+                if start >= size:
+                    raise HTTPException(status_code=416, detail='Range Not Satisfiable')
+                
+                # Get the range from S3
+                response = s3.get_object(Bucket=bucket, Key=key, Range=f'bytes={start}-{end}')
+                content_length = end - start + 1
+                status_code = 206  # Partial Content
+                headers['Content-Range'] = f'bytes {start}-{end}/{size}'
+                headers['Content-Length'] = str(content_length)
+            else:
+                # Invalid range header, return full file
+                response = s3.get_object(Bucket=bucket, Key=key)
+                headers['Content-Length'] = str(size)
+        else:
+            # No range header, return full file
+            response = s3.get_object(Bucket=bucket, Key=key)
+            headers['Content-Length'] = str(size)
         
         # Stream the video with proper headers
         return StreamingResponse(
             response['Body'].iter_chunks(chunk_size=1024*1024),
+            status_code=status_code,
             media_type=content_type,
-            headers={
-                'Content-Length': str(size),
-                'Accept-Ranges': 'bytes',
-                'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
-                'Access-Control-Allow-Headers': '*',
-            }
+            headers=headers
         )
     except s3.exceptions.NoSuchKey:
         raise HTTPException(status_code=404, detail=f'video not found: {key}')
