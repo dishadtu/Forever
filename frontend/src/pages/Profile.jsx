@@ -36,7 +36,7 @@ export default function Profile(){
     if(id === 'demo'){
       const demoProfile = { id: 'demo', name: 'US <3', bio: 'A demo profile with sample videos.' }
       const demoVideos = [
-        { id: 'vYouMe', title: 'You+Me', url: '/media/You+Me.mp4', poster: null, thumbnail: null, duration: '0:00', description: 'Uploaded clip.' },
+        { id: 'vYouMe', title: 'You+Me', url: '/media/Us/You+Me.mp4', poster: null, thumbnail: null, duration: '0:00', description: 'Uploaded clip.' },
         { id: 'v1', title: 'Sample Clip 1', url: '/media/sample1.mp4', poster: '/media/thumb1.jpg', thumbnail: '/media/thumb1.jpg', duration: '0:12', description: 'A short sample clip.' },
         { id: 'v2', title: 'Sample Clip 2', url: '/media/sample2.mp4', poster: '/media/thumb2.jpg', thumbnail: '/media/thumb2.jpg', duration: '0:20', description: 'Another sample clip.' },
         { id: 'v3', title: 'Sample HLS', url: '/media/sample.m3u8', poster: '/media/thumb3.jpg', thumbnail: '/media/thumb3.jpg', duration: '0:45', description: 'HLS sample.' }
