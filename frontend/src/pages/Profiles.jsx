@@ -38,14 +38,10 @@ export default function Profiles(){
           <h2 className="text-3xl mb-6 text-center">Choose Profile</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-6 items-center justify-center">
             {displayProfiles.map(p=> (
-              <a key={p.id} href={`/profile/demo`} onClick={(e)=>onClickProfile(p,e)} className="group relative overflow-hidden p-6 bg-white rounded shadow border transform transition-transform duration-200 ease-out hover:scale-105 hover:-translate-y-2 hover:shadow-xl hover:z-10 flex flex-col items-center text-center">
+              <a key={p.id} href={`/profile/demo`} onClick={(e)=>onClickProfile(p,e)} className="p-6 bg-white rounded shadow border transform transition-transform duration-200 ease-out hover:scale-105 hover:shadow-xl hover:z-10 flex flex-col items-center text-center">
                 <div className="w-20 h-20 bg-gray-100 rounded-full mb-3 flex items-center justify-center text-xl font-bold text-gray-800">{p.name ? p.name[0] : 'P'}</div>
                 <div className="text-lg font-semibold">{p.name}</div>
                 <div className="text-sm text-gray-600 mt-2">{p.description || 'Theme'}</div>
-                <div className="absolute inset-0 flex flex-col justify-end items-center p-4 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                  <div className="text-white text-sm font-medium mb-2">{p.description || 'Demo profile'}</div>
-                  <div className="bg-white text-gray-900 text-sm px-3 py-1 rounded">View</div>
-                </div>
               </a>
             ))}
           </div>
