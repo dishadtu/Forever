@@ -10,3 +10,4 @@ dist/
 .venv*
 .venv_backup_*
 .env
+context_for_llms/
