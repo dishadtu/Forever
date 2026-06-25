@@ -28,29 +28,8 @@ export default function Profiles(){
     return placeholders
   })()
 
-  const playPop = ()=>{
-    try{
-      const Ctx = window.AudioContext || window.webkitAudioContext
-      const ctx = new Ctx()
-      const o = ctx.createOscillator()
-      const g = ctx.createGain()
-      o.type = 'triangle'
-      o.frequency.value = 700
-      g.gain.value = 0
-      o.connect(g)
-      g.connect(ctx.destination)
-      const now = ctx.currentTime
-      g.gain.setValueAtTime(0, now)
-      g.gain.linearRampToValueAtTime(0.9, now + 0.01)
-      g.gain.exponentialRampToValueAtTime(0.001, now + 0.25)
-      o.start(now)
-      o.stop(now + 0.26)
-    }catch(e){ /* ignore audio failures */ }
-  }
-
   const onClickProfile = (p, ev)=>{
     ev && ev.preventDefault && ev.preventDefault()
-    playPop()
     setSelectedProfile(p)
     setShowLocalSplash(true)
   }
