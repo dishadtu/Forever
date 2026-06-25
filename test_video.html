@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Playback Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #fff;
+        }
+        h1 {
+            color: #e50914;
+        }
+        .test-section {
+            background: #2a2a2a;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+        video {
+            width: 100%;
+            max-width: 800px;
+            background: #000;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .success {
+            background: #4caf50;
+            color: white;
+        }
+        .error {
+            background: #f44336;
+            color: white;
+        }
+        .info {
+            background: #2196f3;
+            color: white;
+        }
+        button {
+            background: #e50914;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 10px 5px 10px 0;
+            font-size: 14px;
+        }
+        button:hover {
+            background: #c40812;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎬 Video Netflix Starter - Local Playback Test</h1>
+    
+    <div class="test-section">
+        <h2>Test 1: Backend Video Streaming Endpoint</h2>
+        <p>Playing video from: <code>http://localhost:8000/api/video/Us/You%2BMe.mp4</code></p>
+        <video id="backendVideo" controls>
+            <source src="http://localhost:8000/api/video/Us/You%2BMe.mp4" type="video/mp4">
+            Your browser does not support the video tag.
+        </video>
+        <div id="backendStatus" class="status info">Loading...</div>
+        <button onclick="testBackendVideo()">Test Stream</button>
+    </div>
+
+    <div class="test-section">
+        <h2>Test 2: Presigned URL Playback</h2>
+        <p id="presignedUrl" style="word-break: break-all; font-family: monospace; font-size: 12px;"></p>
+        <video id="presignedVideo" controls style="display:none;">
+            <source type="video/mp4">
+            Your browser does not support the video tag.
+        </video>
+        <div id="presignedStatus" class="status info">Not loaded yet</div>
+        <button onclick="testPresignedUrl()">Get Presigned URL & Play</button>
+    </div>
+
+    <div class="test-section">
+        <h2>Test 3: Direct S3 Download Test</h2>
+        <p>Testing if presigned URLs allow direct downloads</p>
+        <div id="downloadStatus" class="status info">Not tested</div>
+        <button onclick="testDirectDownload()">Test Direct Download</button>
+    </div>
+
+    <script>
+        // Test 1: Backend streaming
+        function testBackendVideo() {
+            const video = document.getElementById('backendVideo');
+            const status = document.getElementById('backendStatus');
+            
+            video.onloadstart = () => {
+                status.textContent = '⏳ Starting to load...';
+                status.className = 'status info';
+            };
+            
+            video.oncanplay = () => {
+                status.textContent = '✅ Video is playable! (canplay event fired)';
+                status.className = 'status success';
+            };
+            
+            video.onloadeddata = () => {
+                status.textContent = '✅ Loaded enough data to play. Duration: ' + 
+                    (video.duration ? Math.round(video.duration) + ' seconds' : 'loading...');
+                status.className = 'status success';
+            };
+            
+            video.onerror = (e) => {
+                status.textContent = '❌ Error: ' + (video.error?.message || 'Unknown error');
+                status.className = 'status error';
+                console.error('Video error:', video.error);
+            };
+            
+            // Force reload
+            video.src = video.src;
+            video.load();
+        }
+
+        // Test 2: Presigned URL
+        async function testPresignedUrl() {
+            const status = document.getElementById('presignedStatus');
+            const urlDisplay = document.getElementById('presignedUrl');
+            const video = document.getElementById('presignedVideo');
+            
+            status.textContent = '⏳ Getting presigned URL...';
+            status.className = 'status info';
+            
+            try {
+                const response = await fetch('http://localhost:8000/api/presign?key=Us%2FYou%2BMe.mp4');
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                
+                const data = await response.json();
+                const url = data.url;
+                
+                urlDisplay.textContent = '📍 Presigned URL: ' + url;
+                
+                video.querySelector('source').src = url;
+                video.style.display = 'block';
+                
+                video.onloadstart = () => {
+                    status.textContent = '⏳ Presigned URL: Starting to load...';
+                    status.className = 'status info';
+                };
+                
+                video.oncanplay = () => {
+                    status.textContent = '✅ Presigned URL: Video is playable!';
+                    status.className = 'status success';
+                };
+                
+                video.onerror = (e) => {
+                    status.textContent = '❌ Presigned URL: ' + (video.error?.message || 'Error');
+                    status.className = 'status error';
+                    console.error('Presigned video error:', video.error);
+                };
+                
+                video.load();
+                
+            } catch (error) {
+                status.textContent = '❌ Error: ' + error.message;
+                status.className = 'status error';
+                console.error('Presigned URL error:', error);
+            }
+        }
+
+        // Test 3: Direct download
+        async function testDirectDownload() {
+            const status = document.getElementById('downloadStatus');
+            status.textContent = '⏳ Getting presigned URL...';
+            status.className = 'status info';
+            
+            try {
+                const response = await fetch('http://localhost:8000/api/presign?key=Us%2FYou%2BMe.mp4');
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                
+                const data = await response.json();
+                const url = data.url;
+                
+                status.textContent = '⏳ Testing presigned URL with HEAD request...';
+                
+                const headResponse = await fetch(url, { method: 'HEAD' });
+                const contentLength = headResponse.headers.get('content-length');
+                const contentType = headResponse.headers.get('content-type');
+                
+                status.innerHTML = `✅ Presigned URL works!<br>
+                    Status: ${headResponse.status}<br>
+                    Content-Type: ${contentType}<br>
+                    Content-Length: ${contentLength ? (parseInt(contentLength) / 1024 / 1024).toFixed(2) + ' MB' : 'unknown'}`;
+                status.className = 'status success';
+                
+            } catch (error) {
+                status.textContent = '⚠️ Direct download test: ' + error.message;
+                status.className = 'status error';
+                console.error('Download test error:', error);
+            }
+        }
+
+        // Auto-test when page loads
+        window.addEventListener('load', () => {
+            console.log('Testing backend video...');
+            testBackendVideo();
+        });
+    </script>
+</body>
+</html>
