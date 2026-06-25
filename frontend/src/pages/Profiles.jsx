@@ -1,11 +1,13 @@
 import React, {useEffect, useState} from 'react'
 import { useNavigate } from 'react-router-dom'
+import Splash from '../components/Splash'
 import axios from 'axios'
 import { Link } from 'react-router-dom'
 
 export default function Profiles(){
   const [profiles, setProfiles] = useState([])
-  const [burst, setBurst] = useState(null)
+  const [selectedProfile, setSelectedProfile] = useState(null)
+  const [showLocalSplash, setShowLocalSplash] = useState(false)
   const navigate = useNavigate()
 
   useEffect(()=>{
@@ -48,12 +50,9 @@ export default function Profiles(){
 
   const onClickProfile = (p, ev)=>{
     ev && ev.preventDefault && ev.preventDefault()
-    setBurst(p.id)
     playPop()
-    setTimeout(()=>{
-      setBurst(null)
-      navigate(`/profile/demo`)
-    }, 650)
+    setSelectedProfile(p)
+    setShowLocalSplash(true)
   }
 
   return (
@@ -72,10 +71,12 @@ export default function Profiles(){
           </div>
         </div>
       </div>
-      {burst && (
-        <div className="fixed inset-0 flex items-center justify-center pointer-events-none z-50">
-          <div className="text-6xl font-extrabold text-red-600 animate-bounce">ASHWANTHHH!</div>
-        </div>
+      {showLocalSplash && (
+        <Splash onFinish={() => {
+          setShowLocalSplash(false)
+          setSelectedProfile(null)
+          navigate(`/profile/demo`)
+        }} />
       )}
     </div>
   )
