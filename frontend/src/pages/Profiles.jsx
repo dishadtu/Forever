@@ -2,11 +2,10 @@ import React, {useEffect, useState} from 'react'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import { Link } from 'react-router-dom'
-import { playPop } from '../lib/sound'
 
 export default function Profiles(){
   const [profiles, setProfiles] = useState([])
-  const [selectedProfile, setSelectedProfile] = useState(null)
+  
   const navigate = useNavigate()
 
   useEffect(()=>{
@@ -29,8 +28,7 @@ export default function Profiles(){
 
   const onClickProfile = (p, ev)=>{
     ev && ev.preventDefault && ev.preventDefault()
-    // play tuned pop (local /pop.mp3 if present, else remote), then navigate
-    playPop().finally(()=>{ navigate(`/profile/demo`) })
+    navigate(`/profile/demo`)
   }
 
   return (
