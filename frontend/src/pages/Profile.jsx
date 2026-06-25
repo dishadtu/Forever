@@ -38,6 +38,7 @@ export default function Profile(){
       const demoProfile = { id: 'demo', name: 'US <3', bio: 'A demo profile with sample videos.' }
       const demoVideos = [
         { id: 'vYouMe', title: 'You+Me', url: '/Us/You+Me.mp4', poster: null, thumbnail: null, duration: '0:00', description: 'Uploaded clip.' },
+<<<<<<< HEAD
         { id: 'v1', title: 'Sample Clip 1', url: '/sample1.mp4', poster: '/sample1_thumb.jpg', thumbnail: '/sample1_thumb.jpg', duration: '0:12', description: 'A short sample clip.' },
         { id: 'v2', title: 'Sample Clip 2', url: '/sample2.mp4', poster: '/sample2_thumb.jpg', thumbnail: '/sample2_thumb.jpg', duration: '0:20', description: 'Another sample clip.' },
         { id: 'v3', title: 'Sample HLS', url: '/sample.m3u8', poster: '/sample_thumb.jpg', thumbnail: '/sample_thumb.jpg', duration: '0:45', description: 'HLS sample.' }
@@ -45,11 +46,21 @@ export default function Profile(){
       setProfile(demoProfile)
 
       // Generate backend video URLs for demo videos (respect YouTube placeholders)
+=======
+        { id: 'v1', title: 'Sample Clip 1', url: '/sample1.mp4', poster: '/media/thumb1.jpg', thumbnail: '/media/thumb1.jpg', duration: '0:12', description: 'A short sample clip.' },
+        { id: 'v2', title: 'Sample Clip 2', url: '/sample2.mp4', poster: '/media/thumb2.jpg', thumbnail: '/media/thumb2.jpg', duration: '0:20', description: 'Another sample clip.' },
+        { id: 'v3', title: 'Sample HLS', url: '/sample.m3u8', poster: '/media/thumb3.jpg', thumbnail: '/media/thumb3.jpg', duration: '0:45', description: 'HLS sample.' }
+      ]
+      setProfile(demoProfile)
+
+      // Generate backend video URLs for demo videos
+>>>>>>> 3d2d7d9283de57adb99b81e8be4edce3ae6af268
       ;(async ()=>{
         try{
           const BACKEND_URL = 'https://forever23-api.onrender.com'
           const videoUrls = demoVideos.map(vv => {
             if(!vv.url) return ''
+<<<<<<< HEAD
             // Check placeholders by id or by path key
             const key = vv.url.split('/').slice(1).join('/') // e.g., "Us/You+Me.mp4"
             const youtubeId = (youtubePlaceholders?.byId && youtubePlaceholders.byId[vv.id]) || (youtubePlaceholders?.byKey && youtubePlaceholders.byKey[key]) || null
@@ -60,6 +71,15 @@ export default function Profile(){
             return `${BACKEND_URL}/api/video/${encodeURIComponent(key)}`
           })
           const withPlay = demoVideos.map((vv,i)=> ({ ...vv, playUrl: videoUrls[i], youtubeId: videoUrls[i]?.startsWith('youtube:') ? videoUrls[i].split(':')[1] : undefined }))
+=======
+            if(vv.url.startsWith('http')) return vv.url
+            // For non-http local sources, use backend streaming endpoint directly
+            // This avoids presigned URL CORS issues
+            const key = vv.url.split('/').slice(1).join('/') // e.g., "Us/You+Me.mp4"
+            return `${BACKEND_URL}/api/video/${encodeURIComponent(key)}`
+          })
+          const withPlay = demoVideos.map((vv,i)=> ({ ...vv, playUrl: videoUrls[i] }))
+>>>>>>> 3d2d7d9283de57adb99b81e8be4edce3ae6af268
           setVideos(withPlay)
           setSelected(withPlay[0] || null)
         }catch(e){
@@ -83,6 +103,7 @@ export default function Profile(){
         const BACKEND_URL = 'https://forever23-api.onrender.com'
         const videoUrls = vids.map(vv => {
           if(!vv.url) return ''
+<<<<<<< HEAD
           // If the source is already an http(s) YouTube link, keep it; otherwise check placeholders
           // detect common youtube links
           const isYoutubeLink = /youtube\.com|youtu\.be/.test(vv.url)
@@ -99,6 +120,13 @@ export default function Profile(){
           return `${BACKEND_URL}/api/video/${encodeURIComponent(key)}`
         })
         const withPlay = vids.map((vv,i)=> ({ ...vv, playUrl: videoUrls[i], youtubeId: videoUrls[i]?.startsWith('youtube:') ? videoUrls[i].split(':')[1] : undefined }))
+=======
+          if(vv.url.startsWith('http')) return vv.url
+          const key = vv.url.split('/').slice(1).join('/') // Normalize path
+          return `${BACKEND_URL}/api/video/${encodeURIComponent(key)}`
+        })
+        const withPlay = vids.map((vv,i)=> ({ ...vv, playUrl: videoUrls[i] }))
+>>>>>>> 3d2d7d9283de57adb99b81e8be4edce3ae6af268
         setVideos(withPlay)
         setSelected(withPlay[0] || null)
       }catch(e){
@@ -146,6 +174,7 @@ export default function Profile(){
               {isPreviewEnabled ? (
                 <div className="bg-white rounded overflow-hidden shadow group border">
                   <div className="relative">
+<<<<<<< HEAD
                     {v.youtubeId ? (
                       <div className="w-full h-40 bg-black">
                         <iframe
@@ -160,6 +189,9 @@ export default function Profile(){
                     ) : (
                       <VideoPlayer src={v.playUrl || v.url} poster={v.poster} className="w-full h-40 object-cover" previewOnHover onClick={()=>setFullVideo(v)} />
                     )}
+=======
+                    <VideoPlayer src={v.playUrl || v.url} poster={v.poster} className="w-full h-40 object-cover" previewOnHover onClick={()=>setFullVideo(v)} />
+>>>>>>> 3d2d7d9283de57adb99b81e8be4edce3ae6af268
                   </div>
                   <div className="p-3">
                     <div className="font-semibold truncate">{v.title}</div>
@@ -179,6 +211,7 @@ export default function Profile(){
               <div className="p-2 flex justify-end">
                 <button onClick={()=>setFullVideo(null)} className="text-gray-900 bg-gray-200 px-3 py-1 rounded">Close</button>
               </div>
+<<<<<<< HEAD
               {fullVideo.youtubeId ? (
                 <div className="w-full h-[56vw] max-h-[60vh] bg-black">
                   <iframe
@@ -193,6 +226,9 @@ export default function Profile(){
               ) : (
                 <VideoPlayer src={fullVideo.playUrl || fullVideo.url} poster={fullVideo.poster} autoPlay={true} className="w-full" />
               )}
+=======
+              <VideoPlayer src={fullVideo.playUrl || fullVideo.url} poster={fullVideo.poster} autoPlay={true} className="w-full" />
+>>>>>>> 3d2d7d9283de57adb99b81e8be4edce3ae6af268
               <div className="p-4">
                 <h3 className="text-xl font-bold">{fullVideo.title}</h3>
                 <p className="text-sm text-gray-600">{fullVideo.description}</p>
