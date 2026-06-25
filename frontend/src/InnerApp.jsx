@@ -34,7 +34,7 @@ export default function InnerApp(){
         <div className="side-placeholder left" aria-hidden="true" />
         <div className="side-placeholder right" aria-hidden="true" />
         <header className="p-4 border-b border-gray-800">
-          <Link to="/" className="text-2xl font-bold">My Videos</Link>
+          <Link to="/" className="text-2xl font-bold">{location.pathname.startsWith('/profile') ? 'My Profiles' : 'My Videos'}</Link>
         </header>
         <main className="p-6">
           <Routes>

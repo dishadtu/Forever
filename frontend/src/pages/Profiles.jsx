@@ -1,9 +1,12 @@
 import React, {useEffect, useState} from 'react'
+import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import { Link } from 'react-router-dom'
 
 export default function Profiles(){
   const [profiles, setProfiles] = useState([])
+  
+  const navigate = useNavigate()
 
   useEffect(()=>{
     axios.get('/api/profiles').then(r=>setProfiles(r.data)).catch(()=>{
@@ -23,6 +26,11 @@ export default function Profiles(){
     return placeholders
   })()
 
+  const onClickProfile = (p, ev)=>{
+    ev && ev.preventDefault && ev.preventDefault()
+    navigate(`/profile/demo`)
+  }
+
   return (
     <div className="min-h-screen bg-white text-gray-900">
       <div className="content-with-side p-8">
@@ -30,15 +38,16 @@ export default function Profiles(){
           <h2 className="text-3xl mb-6 text-center">Choose Profile</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-6 items-center justify-center">
             {displayProfiles.map(p=> (
-              <Link key={p.id} to={`/profile/demo`} className="p-6 bg-white rounded shadow border hover:shadow-md flex flex-col items-center text-center">
+              <a key={p.id} href={`/profile/demo`} onClick={(e)=>onClickProfile(p,e)} className="p-6 bg-white rounded shadow border transform transition-transform duration-200 ease-out hover:scale-105 hover:shadow-xl hover:z-10 flex flex-col items-center text-center">
                 <div className="w-20 h-20 bg-gray-100 rounded-full mb-3 flex items-center justify-center text-xl font-bold text-gray-800">{p.name ? p.name[0] : 'P'}</div>
                 <div className="text-lg font-semibold">{p.name}</div>
                 <div className="text-sm text-gray-600 mt-2">{p.description || 'Theme'}</div>
-              </Link>
+              </a>
             ))}
           </div>
         </div>
       </div>
+      {/* no Splash on profile click — navigation happens immediately */}
     </div>
   )
 }
