@@ -1,13 +1,12 @@
 import React, {useEffect, useState} from 'react'
 import { useNavigate } from 'react-router-dom'
-import Splash from '../components/Splash'
 import axios from 'axios'
 import { Link } from 'react-router-dom'
+import { playPop } from '../lib/sound'
 
 export default function Profiles(){
   const [profiles, setProfiles] = useState([])
   const [selectedProfile, setSelectedProfile] = useState(null)
-  const [showLocalSplash, setShowLocalSplash] = useState(false)
   const navigate = useNavigate()
 
   useEffect(()=>{
@@ -30,8 +29,8 @@ export default function Profiles(){
 
   const onClickProfile = (p, ev)=>{
     ev && ev.preventDefault && ev.preventDefault()
-    setSelectedProfile(p)
-    setShowLocalSplash(true)
+    // play tuned pop (local /pop.mp3 if present, else remote), then navigate
+    playPop().finally(()=>{ navigate(`/profile/demo`) })
   }
 
   return (
@@ -50,13 +49,7 @@ export default function Profiles(){
           </div>
         </div>
       </div>
-      {showLocalSplash && (
-        <Splash onFinish={() => {
-          setShowLocalSplash(false)
-          setSelectedProfile(null)
-          navigate(`/profile/demo`)
-        }} />
-      )}
+      {/* no Splash on profile click — navigation happens immediately */}
     </div>
   )
 }
