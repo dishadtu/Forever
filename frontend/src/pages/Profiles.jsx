@@ -1,9 +1,12 @@
 import React, {useEffect, useState} from 'react'
+import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import { Link } from 'react-router-dom'
 
 export default function Profiles(){
   const [profiles, setProfiles] = useState([])
+  const [burst, setBurst] = useState(null)
+  const navigate = useNavigate()
 
   useEffect(()=>{
     axios.get('/api/profiles').then(r=>setProfiles(r.data)).catch(()=>{
@@ -23,6 +26,36 @@ export default function Profiles(){
     return placeholders
   })()
 
+  const playPop = ()=>{
+    try{
+      const Ctx = window.AudioContext || window.webkitAudioContext
+      const ctx = new Ctx()
+      const o = ctx.createOscillator()
+      const g = ctx.createGain()
+      o.type = 'triangle'
+      o.frequency.value = 700
+      g.gain.value = 0
+      o.connect(g)
+      g.connect(ctx.destination)
+      const now = ctx.currentTime
+      g.gain.setValueAtTime(0, now)
+      g.gain.linearRampToValueAtTime(0.9, now + 0.01)
+      g.gain.exponentialRampToValueAtTime(0.001, now + 0.25)
+      o.start(now)
+      o.stop(now + 0.26)
+    }catch(e){ /* ignore audio failures */ }
+  }
+
+  const onClickProfile = (p, ev)=>{
+    ev && ev.preventDefault && ev.preventDefault()
+    setBurst(p.id)
+    playPop()
+    setTimeout(()=>{
+      setBurst(null)
+      navigate(`/profile/demo`)
+    }, 650)
+  }
+
   return (
     <div className="min-h-screen bg-white text-gray-900">
       <div className="content-with-side p-8">
@@ -30,15 +63,20 @@ export default function Profiles(){
           <h2 className="text-3xl mb-6 text-center">Choose Profile</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-6 items-center justify-center">
             {displayProfiles.map(p=> (
-              <Link key={p.id} to={`/profile/demo`} className="p-6 bg-white rounded shadow border hover:shadow-md flex flex-col items-center text-center">
+              <a key={p.id} href={`/profile/demo`} onClick={(e)=>onClickProfile(p,e)} className="p-6 bg-white rounded shadow border hover:shadow-md flex flex-col items-center text-center">
                 <div className="w-20 h-20 bg-gray-100 rounded-full mb-3 flex items-center justify-center text-xl font-bold text-gray-800">{p.name ? p.name[0] : 'P'}</div>
                 <div className="text-lg font-semibold">{p.name}</div>
                 <div className="text-sm text-gray-600 mt-2">{p.description || 'Theme'}</div>
-              </Link>
+              </a>
             ))}
           </div>
         </div>
       </div>
+      {burst && (
+        <div className="fixed inset-0 flex items-center justify-center pointer-events-none z-50">
+          <div className="text-6xl font-extrabold text-red-600 animate-bounce">ASHWANTHHH!</div>
+        </div>
+      )}
     </div>
   )
 }
